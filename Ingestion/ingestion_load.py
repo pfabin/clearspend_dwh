@@ -13,10 +13,10 @@ DB = dict(
 SCHEMA = "ingestion"
 
 FILES = [
-    ("datasets/cards_data.csv", "cards_data"),
-    ("datasets/mcc_data.csv", "mcc_data"),
-    ("datasets/transactions_data.csv", "transactions_data"),
-    ("datasets/users_data.csv", "users_data")
+    ("Datasets/cards_data.csv", "cards_data"),
+    ("Datasets/mcc_data.csv", "mcc_data"),
+    ("Datasets/transactions_data.csv", "transactions_data"),
+    ("Datasets/users_data.csv", "users_data")
 ]
 
 def create_table_from_header(cur, csv_path: str, table_name: str):
@@ -64,8 +64,11 @@ def main():
     with psycopg.connect(**DB) as conn:
         with conn.cursor() as cur:
             for path, table in FILES:
-                cols = create_table_from_header(cur, path, table)
-                copy_csv(cur, path, table, cols)
+                try:
+                    cols = create_table_from_header(cur, path, table)
+                    copy_csv(cur, path, table, cols)
+                except Exception as e:
+                    print(f"❌ Failed to load {path}: {e}")
 
         conn.commit()
 
