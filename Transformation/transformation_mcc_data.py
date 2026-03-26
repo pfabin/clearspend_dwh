@@ -44,29 +44,27 @@ def main():
     print(f"🔄 Read {len(df)} rows from ingestion.{table_name}")
 
     # ==============================
-    # Clean code column
+    # Cleaning
     # ==============================
+    # 1. Code
     df["code"] = df["code"].str.replace('"""', '', regex=False)
     df["code"] = df["code"].str.replace('MCC', '', regex=False)
     df["code"] = df["code"].str.strip()
-
-    # Filter out non-numeric rows (e.g. NOTE, COMMENT)
     df = df[df["code"].str.isnumeric()]
-
-    # Cast to integer
     df["code"] = df["code"].astype(int)
+    ### Removing qoutation marks, 'MCC' prefix, spaces, and non-numeric rows like NOTE and COMMENT.
+    ### Converting to numeric for proper id
 
-    # ==============================
-    # Clean description column
-    # ==============================
+    # 2. Description
     df["description"] = df["description"].str.strip()
     df["description"] = df["description"].str.title()
+    ### removing white spaces in beginning or end of the text, also standardising the text to title format
 
-    # ==============================
-    # Deduplicate and sort
-    # ==============================
+    # 3. Duplicates
     df = df.drop_duplicates(subset=["code", "description"])
     df = df.sort_values("code").reset_index(drop=True)
+    ### dropping duplicates with natural key code + description, we also will not use the columns
+    ### notes and updated_by as they are irrelevant to our objective
 
     print(f"✅ Cleaned to {len(df)} rows (removed junk + duplicates)")
 
@@ -86,13 +84,16 @@ def main():
     print(f"✅ Inserted {len(df)} rows into transformation.{table_name}")
 
     # ==============================
-    # Commit + close
+    # Close
     # ==============================
     conn.commit()
     cur.close()
     conn.close()
 
-    print("✅ Pipeline completed successfully")
-
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+        print("✅ Pipeline completed successfully")
+    except Exception as e:
+        print("Error occurred:")
+        print(e)
