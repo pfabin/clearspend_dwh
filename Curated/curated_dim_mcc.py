@@ -1,5 +1,6 @@
 import psycopg
 import pandas as pd
+from io import StringIO
 
 def main():
     # ==============================
@@ -53,15 +54,15 @@ def main():
     # Copying chunk directly to Postgres
     # ==============================
 
-    csv_file = "star_schema/dim_mcc.csv"
-    dim_mcc.to_csv(csv_file, index=False)
+    buffer = StringIO()
+    dim_mcc.to_csv(buffer, index=False, header=False, na_rep="")
+    buffer.seek(0)
 
-    with open(csv_file, "r", encoding="utf-8") as f:
-        with cur.copy("""
-            COPY curated.dim_mcc
-            FROM STDIN WITH CSV HEADER
-        """) as copy:
-            copy.write(f.read())
+    with cur.copy("""
+        COPY curated.dim_mcc
+        FROM STDIN WITH (FORMAT CSV)
+    """) as copy:
+        copy.write(buffer.getvalue())
     conn.commit()
 
     print("✅ dim_mcc loaded into curated.dim_mcc")
