@@ -25,7 +25,7 @@ cur.execute(f"DROP TABLE IF EXISTS transformation.{table_name};")
 cur.execute(f"""
     CREATE TABLE transformation.{table_name} (
         id INTEGER,
-        date DATE,
+        date_id INT,
         client_id INTEGER,
         card_id INTEGER,
         amount DECIMAL(10,2),
@@ -140,12 +140,17 @@ for df in pd.read_sql_query(query, conn, chunksize=chunk_size):
     df["is_refund"] = df["is_refund"].fillna(False)
     ### if amount is negative we know it is a refund, therefore we flag it for analysis
 
+    # 7. Date into surrogate for curated
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["date_id"] = df["date"].dt.strftime("%Y%m%d").astype("Int64")
+    ### Surrogate key convention
+
     # ==============================
     # Keeping only target columns
     # ==============================
     df = df[
         [
-            "id", "date", "client_id", "card_id", "amount", "is_refund", "use_chip",
+            "id", "date_id", "client_id", "card_id", "amount", "is_refund", "use_chip",
             "merchant_id", "merchant_city", "is_online", "merchant_country", "merchant_state", "zip", "mcc", 
             "is_error_tech", "is_error_other", "error_text"
         ]
@@ -160,7 +165,7 @@ for df in pd.read_sql_query(query, conn, chunksize=chunk_size):
 
     with cur.copy(f"""
         COPY transformation.{table_name}
-        (id, date, client_id, card_id, amount, is_refund,
+        (id, date_id, client_id, card_id, amount, is_refund,
          use_chip, merchant_id, merchant_city, is_online, merchant_country, merchant_state,
          zip, mcc, is_error_tech, is_error_other, error_text)
         FROM STDIN WITH (FORMAT CSV)
