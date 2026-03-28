@@ -1,5 +1,5 @@
-import psycopg2
-from psycopg2 import sql
+import psycopg
+from psycopg import sql
 
 HOST = "localhost"
 PORT = 5432
@@ -14,7 +14,7 @@ TARGET_TABLE = "dim_card"
 
 
 def main():
-    conn = psycopg2.connect(
+    conn = psycopg.connect(
         host=HOST,
         port=PORT,
         dbname=DATABASE,
