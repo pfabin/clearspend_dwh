@@ -15,17 +15,17 @@ def main():
         password="password"
     )
     cur = conn.cursor()
-    df = pd.read_sql("""SELECT date FROM transformation.transactions_data""", conn)
+    df = pd.read_sql("""SELECT date_id FROM transformation.transactions_data""", conn)
 
     # ==============================
     # CLEANING
     # ==============================
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["date"] = pd.to_datetime(df["date_id"].astype(str), format="%Y%m%d", errors="coerce")
     df = df[df["date"].notna()].copy()
-    ### Ensuring DATE type
+    ### Reconstructing date from date_id (YYYYMMDD integer) for date component extraction
     # Surrogate
-    df["date_key"] = df["date"].dt.strftime("%Y%m%d").astype("Int64")
-    ### Converting date column to the industry-standard surrogate
+    df["date_key"] = df["date_id"]
+    ### date_id is already in YYYYMMDD surrogate format
 
     # Others
     dim_date = pd.DataFrame({
