@@ -38,7 +38,7 @@ def main():
     # Read from ingestion (only code and description)
     # ==============================
     df = pd.read_sql_query(
-        "SELECT code, description FROM ingestion.mcc_data", conn
+        f"SELECT code, description FROM ingestion.{table_name}", conn
     )
 
     print(f"🔄 Read {len(df)} rows from ingestion.{table_name}")
