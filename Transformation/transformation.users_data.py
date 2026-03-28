@@ -1,293 +1,257 @@
 import psycopg
 import pandas as pd
+import re
 from io import StringIO
 
-table_name = "users_data"
+def main():
+    table_name = "users_data"
 
-# ==============================
-# Connect
-# ==============================
-conn = psycopg.connect(
-    host="localhost",
-    port=5432,
-    dbname="db_clearspend",
-    user="postgres",
-    password="password"
-)
-
-cur = conn.cursor()
-
-# ==============================
-# Helper functions
-# ==============================
-def normalize_spaces(series):
-    return (
-        series.astype("string")
-        .fillna("")
-        .str.strip()
-        .str.replace(r"\s+", " ", regex=True)
+    # ==============================
+    # Connect
+    # ==============================
+    conn = psycopg.connect(
+        host="localhost",
+        port=5432,
+        dbname="db_clearspend",
+        user="postgres",
+        password="password"
     )
 
-def parse_money(series):
-    s = normalize_spaces(series)
-    s = s.str.replace("$", "", regex=False)
-    s = s.str.replace(",", "", regex=False)
+    cur = conn.cursor()
 
-    k_mask = s.str.lower().str.endswith("k", na=False)
-    s = s.str.replace(r"[kK]$", "", regex=True)
+    # ==============================
+    # Setup schema + table
+    # ==============================
+    cur.execute("CREATE SCHEMA IF NOT EXISTS transformation;")
+    cur.execute(f"DROP TABLE IF EXISTS transformation.{table_name};")
 
-    out = pd.to_numeric(s, errors="coerce")
-    out.loc[k_mask] = out.loc[k_mask] * 1000
+    cur.execute(f"""
+        CREATE TABLE transformation.{table_name} (
+            id INTEGER,
+            birth_year INTEGER,
+            birth_month INTEGER,
+            gender VARCHAR(10),
+            address VARCHAR(50),
+            latitude DECIMAL(10,5),
+            longitude DECIMAL(10,5),
+            yearly_income DECIMAL(10,2),
+            total_debt DECIMAL(10,2),
+            credit_score INTEGER,
+            num_credit_cards INTEGER,
+            employment_status VARCHAR(20),
+            education_level VARCHAR(20)
+        );
+    """)
 
-    return out.round(2)
+    print(f"✅ Table transformation.{table_name} created")
 
-def clean_employment_status(series):
-    s = normalize_spaces(series).str.lower()
+    # ==============================
+    # Read from ingestion
+    # ==============================
+    df = pd.read_sql_query(f"SELECT * FROM ingestion.{table_name}", conn)
+    print(f"🔄 Read {len(df)} rows from ingestion.{table_name}")
 
-    replacements = {
-        "employed": "Employed",
-        "empl0yed": "Employed",
+    # ==============================
+    # Cleaning
+    # ==============================
+    # 1. id
+    df["id"] = pd.to_numeric(df["id"], errors="coerce")
+    df = df[df["id"].notna()].copy()
+    df["id"] = df["id"].astype("Int64")
+    df = df.drop_duplicates(subset=["id"]).copy()
+    ### Converting id to numeric, dropping missing, and keeping only unique ids for no duplicated
+
+    # 2. gender
+    df["gender"] = (
+        df["gender"]
+        .astype("string")
+        .str.strip()
+        .str.title()
+    )
+    ### Converting gender to title format
+
+    # 3. address
+    df["address"] = (
+        df["address"]
+        .astype("string")
+        .str.strip()
+    )
+    ### Removing empty spaces at the beginning and end of address
+
+    # 4. yearly_income
+    df["yearly_income"] = df["yearly_income"].apply(
+        lambda value: (
+            pd.NA if pd.isna(value) or str(value).strip().lower() in {"", "nan", "none", "null", "unknown"}
+            else (
+                float(
+                    str(value).strip().lower().replace("$", "").replace(",", "").replace(".", "")[:-1]
+                ) * 1000
+                if str(value).strip().lower().replace("$", "").replace(",", "").replace(".", "").endswith("k")
+                and str(value).strip().lower().replace("$", "").replace(",", "").replace(".", "")[:-1].isdigit()
+                else pd.to_numeric(
+                    str(value).strip().lower().replace("$", "").replace(",", "").replace(".", ""),
+                    errors="coerce"
+                )
+            )
+        )
+    )
+    ### Keeping only numeric yearly income values, removing dollar signs, commas, and full stops, and converting k to *1000
+
+    # 5. total_debt
+    df["total_debt"] = df["total_debt"].apply(
+        lambda value: (
+            pd.NA if pd.isna(value) or str(value).strip().lower() in {"", "nan", "none", "null", "unknown"}
+            else (
+                float(
+                    str(value).strip().lower().replace("$", "").replace(",", "").replace(".", "")[:-1]
+                ) * 1000
+                if str(value).strip().lower().replace("$", "").replace(",", "").replace(".", "").endswith("k")
+                and str(value).strip().lower().replace("$", "").replace(",", "").replace(".", "")[:-1].isdigit()
+                else pd.to_numeric(
+                    str(value).strip().lower().replace("$", "").replace(",", "").replace(".", ""),
+                    errors="coerce"
+                )
+            )
+        )
+    )
+    ### Keeping only numeric total_debt values, removing dollar signs, commas, and full stops, and converting k to *1000, like in previous
+
+    # 6. credit_score
+    df["credit_score"] = pd.to_numeric(df["credit_score"], errors="coerce")
+    df = df[df["credit_score"].isna() | df["credit_score"].between(100, 999)].copy()
+    df["credit_score"] = df["credit_score"].astype("Int64")
+    ### Keeping only three-digit credit scores and setting invalid values aside
+
+    # 7. num_credit_cards
+    df["num_credit_cards"] = pd.to_numeric(df["num_credit_cards"], errors="coerce").astype("Int64")
+    ### Keeping num_credit_cards numeric and leaving missing values as NA
+
+    # 8. dropping unnecessary columns
+    df = df.drop(columns=["retirement_age", "current_age", "per_capita_income"], errors="ignore")
+    ### Dropping retirement_age, current_age, and per_capita_income, justified in the report
+
+    # 9. employment_status
+    employment_map = {
+        "retird": "Retired",
+        "ret.": "Retired",
+        "retired": "Retired",
 
         "student": "Student",
         "studnt": "Student",
 
-        "retired": "Retired",
-        "ret.": "Retired",
-        "retird": "Retired",
-
-        "unemployed": "Unemployed",
         "un-employed": "Unemployed",
+        "unemployed": "Unemployed",
         "unemployd": "Unemployed",
 
         "self-employed": "Self-Employed",
         "self employed": "Self-Employed",
         "self-employd": "Self-Employed",
-        "self employd": "Self-Employed",
+
+        "employed": "Employed",
+        "empl0yed": "Employed"
     }
 
-    return s.replace(replacements)
+    df["employment_status"] = df["employment_status"].apply(
+        lambda value: (
+            "Unknown" if pd.isna(value)
+            else employment_map.get(
+                str(value).strip().lower(),
+                "Unknown"
+            )
+        )
+    )
+    ### we must hard code the categories, even regex fails to read. Better to make sure source always gives
+    ### standard input.
 
-def clean_education_level(series):
-    s = normalize_spaces(series).str.lower()
-
-    replacements = {
+    # 10. education_level
+    education_map = {
+        # High School
         "high school": "High School",
         "highschool": "High School",
         "hs": "High School",
 
-        "associate degree": "Associate Degree",
+        # Associate
         "associate": "Associate Degree",
+        "associate degree": "Associate Degree",
         "assoc degree": "Associate Degree",
         "associate deg.": "Associate Degree",
+        "associatedeg": "Associate Degree",
 
+        # Bachelor
         "bachelor degree": "Bachelor Degree",
         "bachelors": "Bachelor Degree",
         "bachelor's degree": "Bachelor Degree",
         "ba/bs": "Bachelor Degree",
 
+        # Master
         "master degree": "Master Degree",
         "masters": "Master Degree",
         "master's degree": "Master Degree",
         "ms/ma": "Master Degree",
 
-        "doctorate": "Doctorate",
-        "doct.": "Doctorate"
+        # Doctorate
+        "doctorate": "Doctorate"
     }
 
-    return s.replace(replacements)
+    df["education_level"] = df["education_level"].apply(
+        lambda value: (
+            "Unknown" if pd.isna(value)
+            else education_map.get(
+                re.sub(r"\s+", " ", str(value).strip().lower()),
+                "Unknown"
+            )
+        )
+    )
+    ### like previously, hard coded categories
 
-# ==============================
-# Setup schema + table
-# ==============================
-cur.execute("CREATE SCHEMA IF NOT EXISTS transformation;")
-cur.execute(f"DROP TABLE IF EXISTS transformation.{table_name};")
-
-cur.execute(f"""
-    CREATE TABLE transformation.{table_name} (
-        id INTEGER,
-        current_age INTEGER,
-        retirement_age INTEGER,
-        birth_year INTEGER,
-        birth_month INTEGER,
-        gender VARCHAR(20),
-        address TEXT,
-        latitude DECIMAL(10,6),
-        longitude DECIMAL(10,6),
-        per_capita_income DECIMAL(12,2),
-        yearly_income DECIMAL(12,2),
-        total_debt DECIMAL(12,2),
-        credit_score INTEGER,
-        num_credit_cards INTEGER,
-        employment_status VARCHAR(50),
-        education_level VARCHAR(50),
-        years_to_retirement INTEGER,
-        duplicate_id_flag BOOLEAN,
-        duplicate_id_conflict_flag BOOLEAN,
-        age_birthyear_mismatch_flag BOOLEAN,
-        retirement_age_conflict_flag BOOLEAN,
-        income_consistency_flag BOOLEAN
-    );
-""")
-
-print(f"✅ Table transformation.{table_name} created")
-
-# ==============================
-# Read from ingestion
-# ==============================
-cur.execute(f"SELECT * FROM ingestion.{table_name}")
-rows = cur.fetchall()
-cols = [desc[0] for desc in cur.description]
-
-df = pd.DataFrame(rows, columns=cols)
-print(f"🔄 Loaded {len(df)} rows from ingestion.{table_name}")
-
-# ==============================
-# Convert numeric columns
-# ==============================
-numeric_cols = [
-    "id",
-    "current_age",
-    "retirement_age",
-    "birth_year",
-    "birth_month",
-    "latitude",
-    "longitude",
-    "credit_score",
-    "num_credit_cards"
-]
-
-for col in numeric_cols:
-    df[col] = pd.to_numeric(df[col], errors="coerce")
-
-# ==============================
-# Basic text cleanup
-# ==============================
-text_cols = ["gender", "address", "employment_status", "education_level"]
-for col in text_cols:
-    df[col] = normalize_spaces(df[col])
-
-df["gender"] = df["gender"].str.title()
-
-# ==============================
-# Remove exact duplicate rows
-# ==============================
-before = len(df)
-df = df.drop_duplicates()
-print(f"✅ Removed {before - len(df)} exact duplicate rows")
-
-# ==============================
-# Standardize categories
-# ==============================
-df["employment_status"] = clean_employment_status(df["employment_status"])
-df["education_level"] = clean_education_level(df["education_level"])
-
-# ==============================
-# Convert money fields
-# ==============================
-df["per_capita_income"] = parse_money(df["per_capita_income"])
-df["yearly_income"] = parse_money(df["yearly_income"])
-df["total_debt"] = parse_money(df["total_debt"])
-
-# ==============================
-# Create flags before dedup by id
-# ==============================
-df = df.sort_values("id").reset_index(drop=True)
-
-df["duplicate_id_flag"] = df["id"].duplicated(keep=False)
-
-emp_conflict = df.groupby("id")["employment_status"].transform("nunique") > 1
-edu_conflict = df.groupby("id")["education_level"].transform("nunique") > 1
-df["duplicate_id_conflict_flag"] = emp_conflict | edu_conflict
-
-# age plausibility check based on inferred 2019/2020 snapshot
-age_2019_after_bday = 2019 - df["birth_year"]
-age_2019_before_bday = age_2019_after_bday - 1
-age_2020_after_bday = 2020 - df["birth_year"]
-age_2020_before_bday = age_2020_after_bday - 1
-
-valid_age = (
-    (df["current_age"] == age_2019_after_bday) |
-    (df["current_age"] == age_2019_before_bday) |
-    (df["current_age"] == age_2020_after_bday) |
-    (df["current_age"] == age_2020_before_bday)
-)
-
-df["age_birthyear_mismatch_flag"] = ~valid_age
-
-df["retirement_age_conflict_flag"] = df["retirement_age"] < df["current_age"]
-df["income_consistency_flag"] = df["per_capita_income"] > df["yearly_income"]
-df["years_to_retirement"] = df["retirement_age"] - df["current_age"]
-
-# ==============================
-# Keep one row per user id
-# ==============================
-before = len(df)
-df = df.drop_duplicates(subset=["id"], keep="first")
-print(f"✅ Removed {before - len(df)} duplicate id rows")
-print(f"✅ Final rows after cleaning: {len(df)}")
-
-# ==============================
-# Keep only target columns
-# ==============================
-df = df[
-    [
+    # Final column order
+    final_columns = [
         "id",
-        "current_age",
-        "retirement_age",
         "birth_year",
         "birth_month",
         "gender",
         "address",
         "latitude",
         "longitude",
-        "per_capita_income",
         "yearly_income",
         "total_debt",
         "credit_score",
         "num_credit_cards",
         "employment_status",
-        "education_level",
-        "years_to_retirement",
-        "duplicate_id_flag",
-        "duplicate_id_conflict_flag",
-        "age_birthyear_mismatch_flag",
-        "retirement_age_conflict_flag",
-        "income_consistency_flag"
+        "education_level"
     ]
-]
 
-# ==============================
-# Copy to Postgres
-# ==============================
-buffer = StringIO()
-df.to_csv(buffer, index=False, header=False, na_rep="")
-buffer.seek(0)
+    df = df[final_columns].copy()
 
-with cur.copy(f"""
-    COPY transformation.{table_name}
-    (id, current_age, retirement_age, birth_year, birth_month,
-     gender, address, latitude, longitude, per_capita_income,
-     yearly_income, total_debt, credit_score, num_credit_cards,
-     employment_status, education_level, years_to_retirement,
-     duplicate_id_flag, duplicate_id_conflict_flag,
-     age_birthyear_mismatch_flag, retirement_age_conflict_flag,
-     income_consistency_flag)
-    FROM STDIN WITH (FORMAT CSV)
-""") as copy:
-    copy.write(buffer.getvalue())
+    # ==============================
+    # Copy to Postgres
+    # ==============================
+    buffer = StringIO()
+    df.to_csv(buffer, index=False, header=False, na_rep="")
+    buffer.seek(0)
 
-# ==============================
-# Save transformed dataset as CSV
-# ==============================
-output_path = "/Users/mirzakilic/Downloads/clearspend_dwh/Transformation/users_data_transformed.csv"
-df.to_csv(output_path, index=False)
-print(f"✅ CSV saved to: {output_path}")
+    with cur.copy(f"""
+        COPY transformation.{table_name}
+        (id, birth_year, birth_month,
+        gender, address, latitude, longitude,
+        yearly_income, total_debt, credit_score, num_credit_cards,
+        employment_status, education_level)
+        FROM STDIN WITH (FORMAT CSV)
+        """) as copy:
+        copy.write(buffer.getvalue())
 
-# ==============================
-# Commit + close
-# ==============================
-conn.commit()
-cur.close()
-conn.close()
+    print(f"✅ Inserted {len(df)} rows into transformation.{table_name}")
+    # ==============================
+    # Close
+    # ==============================
+    conn.commit()
+    cur.close()
+    conn.close()
 
-print("✅ Pipeline completed successfully")
+if __name__ == "__main__":
+    try:
+        main()
+        print("✅ Pipeline completed successfully")
+    except Exception as e:
+        print("Error occurred:")
+        print(e)
