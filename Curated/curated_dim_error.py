@@ -13,16 +13,16 @@ def main():
         password="password"
     )
     cur = conn.cursor()
-    df = pd.read_sql("""SELECT is_error_tech, is_error_other, error_text
+    df = pd.read_sql("""SELECT is_error_tech, is_error_client, error_client_message
                       FROM transformation.transactions_data""", conn)
 
     # ==============================
     # CLEANING
     # ==============================
-    dim_error = pd.DataFrame({   
+    dim_error = pd.DataFrame({
         "is_error_tech": df["is_error_tech"],
-        "is_error_client": df["is_error_other"],
-        "error_client_message": df["error_text"],
+        "is_error_client": df["is_error_client"],
+        "error_client_message": df["error_client_message"],
     })
     dim_error = dim_error.drop_duplicates().reset_index(drop=True)
     dim_error.insert(0, "error_key", dim_error.index + 1)
