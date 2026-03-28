@@ -23,7 +23,6 @@ def main():
     # Setup schema + table
     # ==============================
     cur.execute("CREATE SCHEMA IF NOT EXISTS transformation;")
-
     cur.execute(f"DROP TABLE IF EXISTS transformation.{table_name};")
 
     cur.execute(f"""
@@ -50,7 +49,6 @@ def main():
     # Read from ingestion (only code and description)
     # ==============================
     df = pd.read_sql_query(f"SELECT * FROM ingestion.{table_name}", conn)
-
     print(f"🔄 Read {len(df)} rows from ingestion.{table_name}")
 
     # ==============================
@@ -60,44 +58,78 @@ def main():
     # 1. card_brand
     df["card_brand"] = df["card_brand"].apply(
         lambda value: (
-            "Unknown" if pd.isna(value) or re.sub(r"[^a-z]", "", str(value).lower().strip()) in {"", "nan", "none", "null", "unknown"}
+            "NA" if pd.isna(value) or re.sub(r"[^a-z]", "", str(value).lower().strip()) in {"", "nan", "none", "null", "unknown"}
             else "Visa" if ("visa" in re.sub(r"[^a-z]", "", str(value).lower().strip()) or re.sub(r"[^a-z]", "", str(value).lower().strip()) in {"v", "vis", "vsa"})
             else "Mastercard" if "master" in re.sub(r"[^a-z]", "", str(value).lower().strip())
             else "Amex" if ("amex" in re.sub(r"[^a-z]", "", str(value).lower().strip()) or re.sub(r"[^a-z]", "", str(value).lower().strip()) in {"ame", "amx"})
             else "Discover" if ("discover" in re.sub(r"[^a-z]", "", str(value).lower().strip()) or "disc" in re.sub(r"[^a-z]", "", str(value).lower().strip()))
-            else "Unknown"
+            else "NA"
         )
     )
-    ### standardising all anomalous combinations of card brands
+    ### standardising all anomalous combinations of card brands using regex
 
     # 2. card_type
     df["card_type"] = df["card_type"].apply(
         lambda value: (
-            "Unknown" if pd.isna(value) or re.sub(r"[^a-z]", "", str(value).lower().strip()) in {"", "nan", "none", "null", "unknown"}
+            "NA" if pd.isna(value) or re.sub(r"[^a-z]", "", str(value).lower().strip()) in {"", "nan", "none", "null", "unknown"}
             else "Prepaid Debit" if ("prepaid" in re.sub(r"[^a-z]", "", str(value).lower().strip()) or re.sub(r"[^a-z]", "", str(value).lower().strip()) in {"dp", "dpp", "ppd", "dbpp"})
             else "Credit" if ("credit" in re.sub(r"[^a-z]", "", str(value).lower().strip()) or re.sub(r"[^a-z]", "", str(value).lower().strip()) in {"cr", "cc", "cred", "crdeit"})
             else "Debit" if ("debit" in re.sub(r"[^a-z]", "", str(value).lower().strip()) or re.sub(r"[^a-z]", "", str(value).lower().strip()) in {"deb", "db", "d"})
-            else "Unknown"
+            else "NA"
         )
     )
     ### standardising all anomalous combinations of card types
 
     # 3. issuer_bank_name
+    bank_map = {
+        # Bank of America
+        "bank of america": "Bank of America",
+        "bk of america": "Bank of America",
+
+        # Discover
+        "discover bank": "Discover Bank",
+        "discover bk": "Discover Bank",
+
+        # Ally
+        "ally bank": "Ally Bank",
+        "ally bk": "Ally Bank",
+
+        # Wells Fargo
+        "wells fargo": "Wells Fargo",
+
+        # Chase
+        "chase bank": "Chase Bank",
+        "chase bk": "Chase Bank",
+
+        # JPMorgan
+        "jpmorgan chase": "JPMorgan Chase",
+        "jp morgan chase": "JPMorgan Chase",
+
+        # US Bank
+        "u.s. bank": "U.S. Bank",
+        "u.s. bk": "U.S. Bank",
+
+        # Truist
+        "truist": "Truist",
+
+        # PNC
+        "pnc bank": "PNC Bank",
+        "pnc bk": "PNC Bank",
+
+        # Capital One
+        "capital one": "Capital One",
+
+        # Citi
+        "citi": "Citi"
+    }
+
     df["issuer_bank_name"] = df["issuer_bank_name"].apply(
         lambda value: (
-            "Unknown" if pd.isna(value) or re.sub(r"[^a-z]", "", str(value).lower().strip()) in {"", "nan", "none", "null", "unknown"}
-            else "Ally Bank" if "ally" in re.sub(r"[^a-z]", "", str(value).lower().strip())
-            else "Bank of America" if ("bankofamerica" in re.sub(r"[^a-z]", "", str(value).lower().strip()) or "bkofamerica" in re.sub(r"[^a-z]", "", str(value).lower().strip()))
-            else "Capital One" if "capitalone" in re.sub(r"[^a-z]", "", str(value).lower().strip())
-            else "Chase Bank" if ("chase" in re.sub(r"[^a-z]", "", str(value).lower().strip()) and "jpm" not in re.sub(r"[^a-z]", "", str(value).lower().strip()))
-            else "Citi" if re.sub(r"[^a-z]", "", str(value).lower().strip()) == "citi"
-            else "Discover Bank" if "discover" in re.sub(r"[^a-z]", "", str(value).lower().strip())
-            else "JPMorgan Chase" if ("jpmorgan" in re.sub(r"[^a-z]", "", str(value).lower().strip()) or "jpm" in re.sub(r"[^a-z]", "", str(value).lower().strip()))
-            else "PNC Bank" if "pnc" in re.sub(r"[^a-z]", "", str(value).lower().strip())
-            else "Truist" if "truist" in re.sub(r"[^a-z]", "", str(value).lower().strip())
-            else "U.S. Bank" if "usbank" in re.sub(r"[^a-z]", "", str(value).lower().strip())
-            else "Wells Fargo" if "wellsfargo" in re.sub(r"[^a-z]", "", str(value).lower().strip())
-            else "Unknown"
+            "NA" if pd.isna(value)
+            else bank_map.get(
+                re.sub(r"\s+", " ", str(value).strip().lower()),
+                "NA"
+            )
         )
     )
     ### standardising all anomalous combinations of bank names
@@ -122,7 +154,7 @@ def main():
         "virginia": "VA",
     }
     df["issuer_bank_state"] = df["issuer_bank_state"].apply(
-        lambda value: "Unknown" if pd.isna(value) else state_map.get(str(value).strip().lower(), "Unknown")
+        lambda value: "NA" if pd.isna(value) else state_map.get(str(value).strip().lower(), "NA")
     )
     ### setting standard US state codes, and "unknown" for missing
 
@@ -132,20 +164,21 @@ def main():
             "National" if "national" in re.sub(r"[^a-z]", "", str(value).lower().strip())
             else "Regional" if "regional" in re.sub(r"[^a-z]", "", str(value).lower().strip())
             else "Online" if "online" in re.sub(r"[^a-z]", "", str(value).lower().strip())
-            else "Unknown"
+            else "NA"
         )
     )
-    ### again standardisation between 4 levels
+    ### Standardisation between 4 levels, this time using regex as it is simpler than previous tasks which required
+    ### hard coding
 
     # 6. issuer_risk_rating
     df["issuer_risk_rating"] = df["issuer_risk_rating"].apply(
         lambda value: (
             "Low" if "low" in re.sub(r"[^a-z]", "", str(value).lower().strip())
             else "Medium" if "med" in re.sub(r"[^a-z]", "", str(value).lower().strip())
-            else "Unknown"
+            else "NA"
         )
     )
-    ### Same rules applied
+    ### Same rules applied as issuer bank type
 
     # 7. card_number length validation check
     df["card_number"] = df["card_number"].astype("string").str.strip()
