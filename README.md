@@ -24,4 +24,5 @@ Marts: Specific department marts
 ## Star Schema
 <img width="962" height="762" alt="Untitled Diagram drawio" src="https://github.com/user-attachments/assets/aa440240-3180-4ad7-903d-04e0ec348e74" />
 
-## Pipeline Flow Diagram
+## Data Flow Diagram
+<img width="1519" height="468" alt="image" src="https://github.com/user-attachments/assets/b21c3383-e82b-4100-bb15-d7ec382c0f1b" />
