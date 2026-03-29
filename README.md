@@ -5,8 +5,15 @@ Course: EBC2199 - Data Engineering and Data Governance
 Group: Petar F., Mirza K., Andre M.P., Konstanty W.  
 Supervisor: Prof. Mohsen P.  
 
-## Naming Convention
+## Setup Instructions:
+### Naming Convention
 snake_case
+
+### ETL Order 
+Ingestion: ingestion_write.py (create database) then ingestion_load.py (load four datasets)
+Transformation: no order, four datasets transformed individually
+Curated: Kimball star-schema applied
+Marts: Specific department marts
 
 ## DWH Layers
 <img width="571" height="591" alt="clearspend_dwh_layers" src="https://github.com/user-attachments/assets/faac3795-1fa6-4153-9e75-e7fd38b5994f" />
