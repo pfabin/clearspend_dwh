@@ -202,7 +202,7 @@ def main():
             )
         )
     )
-    ### like previously, hard coded categories
+    ### hard coded categories again in case code fails to read abbevations like HS for High School 
 
     # Final column order
     final_columns = [
