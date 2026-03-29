@@ -16,7 +16,7 @@ Transformation: no order, four datasets transformed individually
 
 Curated: Kimball star-schema applied
 
-Marts: Specific department marts
+Marts: Specific department marts (Customer Analytics, Finance, Fraud, Leadership, and Merchant Partnerships)
 
 ## DWH Layers
 <img width="571" height="591" alt="clearspend_dwh_layers" src="https://github.com/user-attachments/assets/faac3795-1fa6-4153-9e75-e7fd38b5994f" />
