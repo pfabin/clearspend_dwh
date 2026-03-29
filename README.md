@@ -10,3 +10,6 @@ snake_case
 
 ## DWH Layers
 <img width="571" height="591" alt="clearspend_dwh_layers" src="https://github.com/user-attachments/assets/faac3795-1fa6-4153-9e75-e7fd38b5994f" />
+
+## Star Schema
+<img width="962" height="762" alt="Untitled Diagram drawio" src="https://github.com/user-attachments/assets/aa440240-3180-4ad7-903d-04e0ec348e74" />
