@@ -13,10 +13,10 @@ DB = dict(
 SCHEMA = "ingestion"
 
 FILES = [
-    ("Datasets/cards_data.csv", "cards_data"),
-    ("Datasets/mcc_data.csv", "mcc_data"),
-    ("Datasets/transactions_data.csv", "transactions_data"),
-    ("Datasets/users_data.csv", "users_data")
+    ("datasets/cards_data.csv", "cards_data"),
+    ("datasets/mcc_data.csv", "mcc_data"),
+    ("datasets/transactions_data.csv", "transactions_data"),
+    ("datasets/users_data.csv", "users_data")
 ]
 
 def create_table_from_header(cur, csv_path: str, table_name: str):
