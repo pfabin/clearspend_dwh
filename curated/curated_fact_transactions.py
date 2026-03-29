@@ -36,6 +36,7 @@ def main():
         );
     """)
     conn.commit()
+    ### The first line creates an IDENTITY surrogate key, this is the main index and primary key
 
     print("Step 4: load 1 percent sample")
     cur.execute("""
@@ -86,6 +87,12 @@ def main():
             AND t.error_client_message IS NOT DISTINCT FROM e.error_client_message;
     """)
     conn.commit()
+    ### Joining date, user, card, location, mcc, and error from the left into the fact transactions table, some nulls will be made
+    ### e.g. in the event of a transaction with an invalid card, we will keep the transaction as it happened, but consider the card
+    ### still invalid, this could be something useful for the fraud department.
+    
+    ### All joins are by natural key, we leave the natural keys also and not drop them, to keep a direct refrence to the source at all
+    ### times
 
     cur.execute("SELECT COUNT(*) FROM curated.fact_transactions;")
     row_count = cur.fetchone()[0]
