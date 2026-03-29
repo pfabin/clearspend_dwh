@@ -26,23 +26,5 @@ def main():
     cursor.close()
     conn.close()
 
-    # schema ingestion
-    conn = psycopg.connect(
-        dbname= "db_clearspend",
-        user="postgres",
-        password="password",
-        host="localhost",
-        port=5432
-    )
-    conn.autocommit = True
-    cursor = conn.cursor()
-
-    cursor.execute("CREATE SCHEMA IF NOT EXISTS ingestion")
-    cursor.execute("SET search_path TO ingestion")
-    print("✅ Schema 'ingestion' ready for tables")
-
-    cursor.close()
-    conn.close()
-
 if __name__ == "__main__":
     main()
