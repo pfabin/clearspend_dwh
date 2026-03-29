@@ -47,7 +47,7 @@ def main():
         cur.execute(
             sql.SQL(
                 """
-                DROP TABLE IF EXISTS {target};
+                DROP TABLE IF EXISTS {target} CASCADE;
 
                 CREATE TABLE {target} (
                     card_key INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

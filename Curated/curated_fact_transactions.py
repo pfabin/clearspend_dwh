@@ -15,7 +15,7 @@ def main():
     conn.commit()
 
     print("Step 2: drop old fact")
-    cur.execute("DROP TABLE IF EXISTS curated.fact_transactions;")
+    cur.execute("DROP TABLE IF EXISTS curated.fact_transactions CASCADE;")
     conn.commit()
 
     print("Step 3: create fact table")

@@ -48,7 +48,7 @@ def main():
     conn.commit()
 
     cur.execute("""
-        DROP TABLE IF EXISTS curated.dim_user;
+        DROP TABLE IF EXISTS curated.dim_user CASCADE;
     """)
     conn.commit()
 

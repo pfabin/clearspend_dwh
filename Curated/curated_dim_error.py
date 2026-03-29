@@ -37,7 +37,7 @@ def main():
     conn.commit()
 
     cur.execute("""
-        DROP TABLE IF EXISTS curated.dim_error;
+        DROP TABLE IF EXISTS curated.dim_error CASCADE;
     """)
     conn.commit()
 
