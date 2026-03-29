@@ -178,7 +178,7 @@ def main():
             else "NA"
         )
     )
-    ### Same rules applied as issuer bank type
+    ### standardising all anomalous combinations of risk ratings
 
     # 7. card_number length validation check
     df["card_number"] = df["card_number"].astype("string").str.strip()
