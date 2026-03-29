@@ -17,7 +17,7 @@ def main():
     # View 1: Customer Lifetime Value
     print("Creating mart_customer_lifetime_value...")
     cur.execute("""
-        CREATE OR REPLACE VIEW curated.mart_customer_lifetime_value AS
+        CREATE OR REPLACE VIEW curated.mart_customer_analytics_lifetime_value AS
         SELECT
             f.user_key,
             u.user_id,
@@ -37,7 +37,7 @@ def main():
     # View 2: Online vs In-Store
     print("Creating mart_customer_online_vs_instore...")
     cur.execute("""
-        CREATE OR REPLACE VIEW curated.mart_customer_online_vs_instore AS
+        CREATE OR REPLACE VIEW curated.mart_customer_analytics_online_vs_instore AS
         SELECT
             l.is_online,
             CASE WHEN l.is_online = TRUE THEN 'Online' ELSE 'In-Store' END AS channel,
@@ -55,7 +55,7 @@ def main():
     # View 3: Active Cards per Customer
     print("Creating mart_customer_active_cards...")
     cur.execute("""
-        CREATE OR REPLACE VIEW curated.mart_customer_active_cards AS
+        CREATE OR REPLACE VIEW curated.mart_customer_analytics_active_cards AS
         SELECT
             u.user_key,
             u.user_id,
@@ -73,7 +73,7 @@ def main():
     # View 4: Suspicious Patterns
     print("Creating mart_customer_suspicious_patterns...")
     cur.execute("""
-        CREATE OR REPLACE VIEW curated.mart_customer_suspicious_patterns AS
+        CREATE OR REPLACE VIEW curated.mart_customer_analytics_suspicious_patterns AS
         SELECT
             f.user_key,
             u.user_id,

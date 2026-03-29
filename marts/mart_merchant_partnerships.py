@@ -17,7 +17,7 @@ def main():
     # View 1: Merchant Transaction Volume
     print("Creating mart_merchant_volume...")
     cur.execute("""
-        CREATE OR REPLACE VIEW curated.mart_merchant_volume AS
+        CREATE OR REPLACE VIEW curated.mart_merchant_partnerships_volume AS
         SELECT
             f.merchant_id,
             COUNT(*) AS transaction_count,
@@ -32,7 +32,7 @@ def main():
     # View 2: Industry Growth (monthly by MCC)
     print("Creating mart_merchant_industry_growth...")
     cur.execute("""
-        CREATE OR REPLACE VIEW curated.mart_merchant_industry_growth AS
+        CREATE OR REPLACE VIEW curated.mart_merchant_partnerships_industry_growth AS
         SELECT
             m.code AS mcc_code,
             m.description AS mcc_description,
@@ -52,7 +52,7 @@ def main():
     # View 3: Merchant Error Rates
     print("Creating mart_merchant_error_rates...")
     cur.execute("""
-        CREATE OR REPLACE VIEW curated.mart_merchant_error_rates AS
+        CREATE OR REPLACE VIEW curated.mart_merchant_partnerships_error_rates AS
         SELECT
             f.merchant_id,
             COUNT(*) AS total_transactions,
@@ -74,7 +74,7 @@ def main():
     # View 4: Geographic Revenue
     print("Creating mart_merchant_geographic_revenue...")
     cur.execute("""
-        CREATE OR REPLACE VIEW curated.mart_merchant_geographic_revenue AS
+        CREATE OR REPLACE VIEW curated.mart_merchant_partnerships_geographic_revenue AS
         SELECT
             l.country,
             l.state,
