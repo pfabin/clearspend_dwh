@@ -34,7 +34,7 @@ def main():
             address VARCHAR(50),
             latitude DECIMAL(10,6),
             longitude DECIMAL(10,6),
-            yearly_income DECIMAL(10,2),
+            annual_income DECIMAL(10,2),
             total_debt DECIMAL(10,2),
             credit_score INTEGER,
             num_credit_cards INTEGER,
@@ -96,6 +96,7 @@ def main():
         )
     )
     ### Keeping only numeric yearly income values, removing dollar signs, commas, and full stops, and converting k to *1000
+    df = df.rename(columns={"yearly_income": "annual_income"})
 
     # 5. total_debt
     df["total_debt"] = df["total_debt"].apply(
@@ -213,7 +214,7 @@ def main():
         "address",
         "latitude",
         "longitude",
-        "yearly_income",
+        "annual_income",
         "total_debt",
         "credit_score",
         "num_credit_cards",
@@ -234,7 +235,7 @@ def main():
         COPY transformation.{table_name}
         (id, birth_year, birth_month,
         gender, address, latitude, longitude,
-        yearly_income, total_debt, credit_score, num_credit_cards,
+        annual_income, total_debt, credit_score, num_credit_cards,
         employment_status, education_level)
         FROM STDIN WITH (FORMAT CSV)
         """) as copy:

@@ -28,7 +28,7 @@ def main():
         "address": df["address"],
         "latitude": df["latitude"],
         "longitude": df["longitude"],
-        "annual_income": df["yearly_income"],
+        "annual_income": df["annual_income"],
         "total_debt": df["total_debt"],
         "credit_score": df["credit_score"],
         "num_credit_cards": df["num_credit_cards"],
