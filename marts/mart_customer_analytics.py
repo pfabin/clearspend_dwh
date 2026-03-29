@@ -63,7 +63,7 @@ def main():
         FROM curated.dim_user u
         JOIN curated.fact_transactions f ON f.user_key = u.user_key
         JOIN curated.dim_card c          ON f.card_key = c.card_key
-        WHERE c.expiry_date > CURRENT_DATE
+        WHERE c.expiry_date > (SELECT TO_DATE(MAX(f2.date_key)::TEXT, 'YYYYMMDD') FROM curated.fact_transactions f2)
         GROUP BY u.user_key, u.user_id
         ORDER BY active_card_count DESC;
     """)
