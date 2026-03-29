@@ -213,33 +213,44 @@ def main():
 
     # 10. Account open date
     month_map = {
-        "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4,
-        "May": 5, "Jun": 6, "Jul": 7, "Aug": 8,
-        "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
+        "jan": 1, "feb": 2, "mar": 3, "apr": 4,
+        "may": 5, "jun": 6, "jul": 7, "aug": 8,
+        "sep": 9, "oct": 10, "nov": 11, "dec": 12
     }
     df["acct_open_date"] = df["acct_open_date"].astype("string").str.strip()
+    parsed_full_dates = pd.to_datetime(df["acct_open_date"], errors="coerce", dayfirst=False)
+    ### parsing normal dates
+
     acct_parts = df["acct_open_date"].str.extract(
-        r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{2})$"
+        r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\s](\d{2}|\d{4})$",
+        expand=True
     )
-    acct_month_num = acct_parts[0].map(month_map)
+    ### handling month-year formats like Feb-99, Feb 99, Feb-1999, Feb 1999
+    acct_month_num = acct_parts[0].str.lower().map(month_map)
     acct_year_full = acct_parts[1].apply(
-        lambda value: pd.NA if pd.isna(value) else (2000 + int(value) if int(value) <= 26 else 1900 + int(value))
+        lambda value: (
+            pd.NA if pd.isna(value)
+            else int(value) if len(str(value)) == 4
+            else (2000 + int(value) if int(value) <= 26 else 1900 + int(value))
+        )
     )
-    df["acct_open_date"] = pd.to_datetime(
+    parsed_month_year = pd.to_datetime(
         {"year": acct_year_full, "month": acct_month_num, "day": 1},
         errors="coerce"
     )
+    df["acct_open_date"] = parsed_full_dates.fillna(parsed_month_year)
     current_year = pd.Timestamp.today().year
     df = df[df["acct_open_date"].isna() | (df["acct_open_date"].dt.year <= current_year)].copy()
     ### splittling month and year, converting to numeric, fusing, and then making a date for easier querying
-    ### we assume the day of action is always the first of the month
+    ### we assume the day of action is always the first of the month.
+    ### Only storing dates before today.
 
     # 11. Expiry date
     df["expires"] = df["expires"].astype("string").str.strip()
     exp_parts = df["expires"].str.extract(
         r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{2})$"
     )
-    exp_month_num = exp_parts[0].map(month_map)
+    exp_month_num = exp_parts[0].str.lower().map(month_map)
     exp_year_full = exp_parts[1].apply(
         lambda value: pd.NA if pd.isna(value) else (2000 + int(value) if int(value) <= 26 else 1900 + int(value))
     )
@@ -250,6 +261,7 @@ def main():
     df = df.drop(columns=["expires"])
     ### once again converting to numeric, fusing, and then making it a date for easier querying.
     ### we assume the day of action is always the first of the month
+    ### Due to different month casing than in acct_open_date, a new month map had to be made
 
     # 12. Credit limit cleanup
     df["credit_limit"] = df["credit_limit"].apply(
