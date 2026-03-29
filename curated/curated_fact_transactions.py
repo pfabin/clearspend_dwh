@@ -87,6 +87,7 @@ def main():
             AND t.error_client_message IS NOT DISTINCT FROM e.error_client_message;
     """)
     conn.commit()
+    ### the TABLESAMPLE uses a 1% sample of the data, this is due to hardware limitations and processing times
     ### Joining date, user, card, location, mcc, and error from the left into the fact transactions table, some nulls will be made
     ### e.g. in the event of a transaction with an invalid card, we will keep the transaction as it happened, but consider the card
     ### still invalid, this could be something useful for the fraud department.
