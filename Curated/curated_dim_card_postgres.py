@@ -5,7 +5,7 @@ HOST = "localhost"
 PORT = 5432
 DATABASE = "db_clearspend"
 USER = "postgres"
-PASSWORD = "your_password"
+PASSWORD = "password"
 
 SOURCE_SCHEMA = "transformation"
 SOURCE_TABLE = "cards_data"
