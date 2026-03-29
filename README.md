@@ -11,8 +11,11 @@ snake_case
 
 ### ETL Order 
 Ingestion: ingestion_write.py (create database) then ingestion_load.py (load four datasets)
+
 Transformation: no order, four datasets transformed individually
+
 Curated: Kimball star-schema applied
+
 Marts: Specific department marts
 
 ## DWH Layers
